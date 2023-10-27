@@ -62,7 +62,38 @@ melted_cor_matrix <- melt(cor_matrix)
 ggplot(data = melted_cor_matrix, aes(x = Var1, y = Var2, fill = value)) +
   geom_tile() +
   geom_text(aes(label = sprintf("%.2f", value)), vjust = 1) +
-  scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+  scale_fill_gradient2(low = "#7ed5d3", high = "#36c9ef", mid = "white", 
+                       midpoint = 0, limit = c(-1, 1), space = "Lab", 
+                       name = "Pearson\nCorrelation") +
+  
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, size = 12, hjust = 1),
+        axis.text.y = element_text(size = 12)) +
+  coord_fixed()
+
+```
+- There's no multicollinearity found.
+
+
+# Correlation between (x - charges)
+```{r}
+cor_df_2 <- insurance_clean
+cor_df_2$age <- as.numeric(cor_df_2$age)
+cor_df_2$bmi <- as.numeric(cor_df_2$bmi)
+cor_df_2$children <- as.numeric(cor_df_2$children)
+cor_df_2$smoker <- as.numeric(cor_df_2$smoker)
+  cor_df_2$region <- as.numeric(cor_df_2$region)
+cor_df_2$female <- as.numeric(cor_df_2$female)
+cor_df_2$charges <- as.numeric(cor_df_2$charges)
+
+cor_matrix <- cor(cor_df_2)
+melted_cor_matrix <- melt(cor_matrix)
+
+my_pallete <- c("#7ed5d3", "#36c9ef", "#2c93d5", "#12528b")
+ggplot(data = melted_cor_matrix, aes(x = Var1, y = Var2, fill = value)) +
+  geom_tile() +
+  geom_text(aes(label = sprintf("%.2f", value)), vjust = 1) +
+  scale_fill_gradient2(low = "#36c9ef", high = "#2c93d5", mid = "white", 
                        midpoint = 0, limit = c(-1, 1), space = "Lab", 
                        name = "Pearson\nCorrelation") +
   theme_minimal() +
@@ -100,8 +131,6 @@ insurance_clean %>%
   facet_wrap(~ female,nrow=2) +
   theme_minimal()+
   theme(title=element_text(size=10),strip.text = element_text(size=10),axis.title = element_text(size=7), plot.caption = element_text(size=9),axis.text.x=element_text(size=8))
-
-
 
 ```
 
