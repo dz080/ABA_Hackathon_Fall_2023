@@ -1,0 +1,118 @@
+---
+title: "Local_notebook"
+author: "Shriansh"
+date: "2023-10-27"
+output: pdf_document
+---
+
+## Fitting Linear Regression Model
+```{r}
+library(tidyverse)
+library(caret)
+```
+
+
+```{r}
+# Step 2: Load the dataset
+insurance <- read.csv("Medical Insurance dataset.csv")
+
+```
+
+```{r}
+insurance_clean <- insurance
+insurance_clean$female <- ifelse(insurance$sex == "female", 1, 0) # binary var
+insurance_clean$smoker <- ifelse(insurance$smoker == "yes", 1, 0) 
+insurance_clean$region <- factor(insurance_clean$region)
+insurance_clean %<>% 
+  select(-sex)
+```
+
+```{r}
+colnames(insurance_clean)
+```
+
+```{r}
+set.seed(41)
+# Perform the split
+splitIndex <- createDataPartition(insurance_clean$charges, p = 0.7, 
+                                  list = FALSE)
+
+# Create the training, testing, and validation sets
+training_data <- insurance_clean[splitIndex, ]
+remaining_data <- insurance_clean[-splitIndex, ]
+
+splitIndexValidation <- createDataPartition(remaining_data$charges, p = 0.5, 
+                                            list = FALSE)
+
+testing_data <- remaining_data[splitIndexValidation, ]
+validation_data <- remaining_data[-splitIndexValidation, ]
+
+# Check the dimensions of the datasets
+cat("Training data dimensions: ",dim(training_data), "\n")
+cat("Test data dimensions: ",dim(testing_data), "\n")
+cat("Validation data dimensions: ",dim(validation_data))
+
+```
+
+```{r}
+# Step 4: Create a multiple linear regression model
+
+# Train the model using k-fold cross-validation (with gender)
+ctrl <- trainControl(method = "cv", number = 10)
+model_gender <- train(charges ~ age + female + bmi + children + smoker + region, 
+                    data = training_data, 
+                    method = "lm",
+                    trControl = ctrl)
+
+
+# Check the summary of the model with gender
+summary(model_gender)
+```
+
+
+```{r}
+# Train the model using k-fold cross-validation (without gender)
+ctrl <- trainControl(method = "cv", number = 10)
+model_wo_gender <- train(charges ~ age + bmi + children + smoker + region, 
+                    data = training_data, 
+                    method = "lm",
+                    trControl = ctrl)
+
+# Summary of the model without gender
+summary(model_wo_gender)
+```
+
+
+```{r}
+# Make predictions on the validation set
+validation_predictions_g <- predict(model_gender, newdata = validation_data)
+validation_predictions_wog <- predict(model_wo_gender, newdata = validation_data)
+```
+
+```{r}
+# Calculate the validation RMSE
+validation_rmse_g <- sqrt(mean((validation_predictions_g - validation_data$charges)^2))
+cat("Validation RMSE (with Gender):", validation_rmse_g, "\n")
+```
+
+
+```{r}
+# Calculate the validation RMSE
+validation_rmse_wog <- sqrt(mean((validation_predictions_wog - validation_data$charges)^2))
+cat("Validation RMSE (without Gender):", validation_rmse_wog, "\n")
+```
+
+
+```{r}
+# Make predictions on the test set
+test_predictions <- predict(model, newdata = testing_data)
+
+# Calculate the test RMSE
+test_rmse <- sqrt(mean((test_predictions - testing_data$charges)^2))
+cat("Test RMSE:", test_rmse, "\n")
+
+```
+
+```{r}
+
+```
