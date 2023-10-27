@@ -1,0 +1,43 @@
+```{r}
+library(ggplot2)
+library(ggpubr)
+library(gridExtra)
+
+```
+
+```{r}
+df <- read.csv('Medical Insurance dataset.csv')
+```
+
+# EDA
+
+```{r}
+mean_values <- tapply(df$charges, df$sex, mean)
+  
+plot_sex <- ggplot(df, aes(x = charges, fill = sex)) +
+  geom_histogram() +
+  geom_vline(aes(xintercept = mean_values[1]), color = "blue", linetype = "dashed") +
+  geom_vline(aes(xintercept = mean_values[2]), color = "red", linetype = "dashed") +
+  annotate("text", x = mean_values[1] + 100, y = 175, label = round(mean_values[1], 2), color = "blue") +
+  annotate("text", x = mean_values[2] + 100, y = 200, label = round(mean_values[2], 2), color = "red")
+
+mean_values <- tapply(df$charges, df$region, mean)
+  
+plot_region <- ggplot(df, aes(x = charges, fill = region)) +
+  geom_histogram() +
+  geom_vline(aes(xintercept = mean_values[1]), color = "blue", linetype = "dashed") +
+  geom_vline(aes(xintercept = mean_values[2]), color = "red", linetype = "dashed") +
+  geom_vline(aes(xintercept = mean_values[3]), color = "green", linetype = "dashed") +
+  geom_vline(aes(xintercept = mean_values[4]), color = "yellow", linetype = "dashed") +
+  annotate("text", x = mean_values[1] + 100, y = 175, label = round(mean_values[1], 2), color = "blue") +
+  annotate("text", x = mean_values[2] + 100, y = 200, label = round(mean_values[2], 2), color = "red")
+annotate("text", x = mean_values[3] + 100, y = 175, label = round(mean_values[3], 2), color = "green") +
+  annotate("text", x = mean_values[4] + 100, y = 175, label = round(mean_values[4], 2), color = "yellow")
+
+
+
+
+
+  
+
+```

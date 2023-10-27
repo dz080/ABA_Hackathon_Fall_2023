@@ -1,0 +1,48 @@
+---
+title: "ABA_Hackathon"
+author: "Danya Zhang"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Data Cleaning
+```{r}
+```
+
+## Fitting Linear Regression Model
+```{r}
+library(tidyverse)
+```
+
+
+```{r}
+# Step 2: Load the dataset
+insurance_data <- read.csv("Medical Insurance dataset.csv")
+
+# Step 3: Explore the data
+summary(insurance_data)
+```
+
+
+```{r}
+# Step 4: Create a multiple linear regression model
+model <- lm(charges ~ age + sex + bmi + children + smoker + region, data = insurance_data)
+
+# Step 5: Check the summary of the model
+summary(model)
+
+# Step 6: Make predictions
+predictions <- predict(model, newdata = insurance_data)
+
+# Step 7: Evaluate the model (optional)
+# You can use various metrics to evaluate the model's performance
+
+# For example, you can calculate the R-squared value
+rsquared <- summary(model)$r.squared
+cat("R-squared value:", rsquared, "\n")
+```
+

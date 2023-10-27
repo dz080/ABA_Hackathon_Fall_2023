@@ -46,15 +46,3 @@ insurance_clean <- insurance_clean %>%
 ))
 ```
 
-```{r}
-ggplot(insurance_clean, aes(x = age, y = charges)) + 
-  geom_point() +
-    labs(title = "Charges vs. Age", x = "Age", y = "Charges")
-
-ggplot(insurance_clean, aes(x = bmi, y = charges)) + 
-  geom_point() +
-  labs(title = "Charges vs. BMI", x = "BMI", y = "Charges") +
-  geom_smooth()
-```
-
-

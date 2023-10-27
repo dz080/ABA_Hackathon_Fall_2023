@@ -1,0 +1,2 @@
+"0","# read in the data"
+"0","insurance <- read.csv(""Medical Insurance dataset.csv"")"
