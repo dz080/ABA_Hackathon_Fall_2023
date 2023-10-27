@@ -1,0 +1,144 @@
+---
+title: "jiun_EDA"
+author: "Jiun Lee"
+date: "2023-10-27"
+output: html_document
+---
+
+```{r}
+library(dplyr)
+library(magrittr)
+library(ggplot2)
+library(tidyr)
+library(reshape2)
+```
+
+# Data Cleaning
+```{r}
+# read in the data
+insurance <- read.csv("Medical Insurance dataset.csv")
+```
+
+```{r}
+# check for null values
+colSums(is.na(insurance)) # no nulls
+```
+
+```{r}
+# new data set with altered variables ready for eda
+insurance_clean <- insurance
+insurance_clean$female <- ifelse(insurance$sex == "female", 1, 0) # binary var
+insurance_clean$smoker <- ifelse(insurance$smoker == "yes", 1, 0) 
+insurance_clean %<>% 
+  select(-sex)
+
+
+insurance_clean <- insurance_clean %>%
+  mutate(
+  region = case_when(
+  region == "northeast" ~ "NE",
+  region == "northwest" ~ "NW",
+  region == "southeast" ~ "SE",
+  region == "southwest" ~ "SW",
+    TRUE ~ region  
+))
+
+insurance_clean$region <- factor(insurance_clean$region)
+
+```
+
+# Correlation
+```{r}
+cor_df <- insurance_clean %>% select (-charges)
+cor_df$age <- as.numeric(cor_df$age)
+cor_df$bmi <- as.numeric(cor_df$bmi)
+cor_df$children <- as.numeric(cor_df$children)
+cor_df$smoker <- as.numeric(cor_df$smoker)
+  cor_df$region <- as.numeric(cor_df$region)
+cor_df$female <- as.numeric(cor_df$female)
+cor_matrix <- cor(cor_df)
+melted_cor_matrix <- melt(cor_matrix)
+
+ggplot(data = melted_cor_matrix, aes(x = Var1, y = Var2, fill = value)) +
+  geom_tile() +
+  geom_text(aes(label = sprintf("%.2f", value)), vjust = 1) +
+  scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+                       midpoint = 0, limit = c(-1, 1), space = "Lab", 
+                       name = "Pearson\nCorrelation") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, size = 12, hjust = 1),
+        axis.text.y = element_text(size = 12)) +
+  coord_fixed()
+
+```
+- There's no multicollinearity found.
+
+
+```{r}
+insurance_clean %>%
+  drop_na() %>%
+  ggplot(aes(x = charges, colour=region, fill=region))+
+  geom_density(alpha = 0.5) + 
+  facet_wrap(~ smoker) +
+  theme_minimal()+
+  theme(title=element_text(size=10),strip.text = element_text(size=10),axis.title = element_text(size=7), plot.caption = element_text(size=9),axis.text.x=element_text(size=8))
+
+
+insurance_clean %>%
+  drop_na() %>%
+  ggplot(aes(x = charges)) +
+  geom_density(alpha = 0.5) + 
+  facet_wrap(~ region,nrow=2) +
+  theme_minimal()+
+  theme(title=element_text(size=10),strip.text = element_text(size=10),axis.title = element_text(size=7), plot.caption = element_text(size=9),axis.text.x=element_text(size=8))
+
+
+insurance_clean %>%
+  drop_na() %>%
+  ggplot(aes(x = charges)) +
+  geom_density(alpha = 0.5) + 
+  facet_wrap(~ female,nrow=2) +
+  theme_minimal()+
+  theme(title=element_text(size=10),strip.text = element_text(size=10),axis.title = element_text(size=7), plot.caption = element_text(size=9),axis.text.x=element_text(size=8))
+
+
+
+```
+
+## Bar plot
+```{r}
+# Bar plot
+comparison_prop <- insurance_clean %>% 
+  filter(!is.na(charges)) %>% group_by(Model,Proportion,Condition) %>% summarize(n=n()) %>% group_by(smoker,Condition) %>% mutate(Prop=n/sum(n))
+
+## check how the prop sums up to 1
+Model_comparison_prop %>%
+summarize(total = sum(Prop, na.rm = TRUE))
+
+insurance_clean %>% 
+  ggplot(aes(bmi, charges)) +
+  facet_wrap(~smoker,nrow=1)+
+  geom_col(aes(bmi), position = "dodge", width= 0.5)+
+  geom_smooth()+
+theme(title=element_text(size=8),strip.text = element_text(size=10),axis.title = element_text(size=5), plot.caption = element_text(size=9),axis.text.x=element_text(size=7), axis.text.y=element_text(size=7))+
+theme_minimal()
+
+
+insurance_clean %>% 
+  ggplot(aes(age, charges)) +
+  geom_col(aes(age), position = "dodge", width= 0.5)+
+  geom_smooth()+
+theme(title=element_text(size=8),strip.text = element_text(size=10),axis.title = element_text(size=5), plot.caption = element_text(size=9),axis.text.x=element_text(size=7), axis.text.y=element_text(size=7))+
+theme_minimal()
+
+insurance_clean %>% 
+  ggplot(aes(age, charges)) +
+  geom_col(aes(age), position = "dodge", width= 0.5)+
+  geom_smooth()+
+  facet_wrap(~children)+
+theme(title=element_text(size=8),strip.text = element_text(size=10),axis.title = element_text(size=5), plot.caption = element_text(size=9),axis.text.x=element_text(size=7), axis.text.y=element_text(size=7))+
+theme_minimal()
+
+
+```
+
