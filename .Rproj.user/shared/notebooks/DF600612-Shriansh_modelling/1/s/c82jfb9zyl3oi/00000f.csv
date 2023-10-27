@@ -1,3 +1,2 @@
 "0","# Step 2: Load the dataset"
 "0","insurance <- read.csv(""Medical Insurance dataset.csv"")"
-"0",""
