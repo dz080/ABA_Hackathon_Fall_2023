@@ -33,5 +33,16 @@ insurance_clean$smoker <- ifelse(insurance$smoker == "yes", 1, 0)
 insurance_clean$region <- factor(insurance_clean$region)
 insurance_clean %<>% 
   select(-sex)
+
+
+insurance_clean <- insurance_clean %>%
+  mutate(
+  region = case_when(
+  region == "northeast" ~ "NE",
+  region == "northwest" ~ "NW",
+  region == "southeast" ~ "SE",
+  region == "southwest" ~ "SW",
+    TRUE ~ region  
+))
 ```
 
