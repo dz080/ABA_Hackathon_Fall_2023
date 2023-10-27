@@ -89,9 +89,16 @@ validation_predictions_g <- predict(model_gender, newdata = validation_data)
 validation_predictions_wog <- predict(model_wo_gender, newdata = validation_data)
 ```
 
+# Installing performance library
+```{r}
+install.packages("performance")
+library(performance)
+```
+
 ```{r}
 # Calculate the validation RMSE
 validation_rmse_g <- sqrt(mean((validation_predictions_g - validation_data$charges)^2))
+
 cat("Validation RMSE (with Gender):", validation_rmse_g, "\n")
 ```
 
@@ -105,14 +112,20 @@ cat("Validation RMSE (without Gender):", validation_rmse_wog, "\n")
 
 ```{r}
 # Make predictions on the test set
-test_predictions <- predict(model, newdata = testing_data)
+test_predictions_g <- predict(model_gender, newdata = testing_data)
 
 # Calculate the test RMSE
-test_rmse <- sqrt(mean((test_predictions - testing_data$charges)^2))
-cat("Test RMSE:", test_rmse, "\n")
+test_rmse_g <- sqrt(mean((test_predictions_g - testing_data$charges)^2))
+cat("Test RMSE (with Gender):", test_rmse_g, "\n")
 
 ```
 
 ```{r}
+# Make predictions on the test set
+test_predictions_wog <- predict(model_wo_gender, newdata = testing_data)
+
+# Calculate the test RMSE
+test_rmse_wog <- sqrt(mean((test_predictions_wog - testing_data$charges)^2))
+cat("Test RMSE (with Gender):", test_rmse_wog, "\n")
 
 ```
