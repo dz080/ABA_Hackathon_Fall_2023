@@ -4,6 +4,7 @@ library(ggpubr)
 library(gridExtra)
 library(ggplot2)
 library(dplyr)
+library(boot)
 
 ```
 
@@ -98,17 +99,112 @@ result_children <- df %>%
     mean_charges = mean(charges)
   )
 
+result_children <- df %>%
+  group_by(age) %>%
+  summarise(
+    mean_charges = mean(charges)
+  )
+
 summary_df <- summary(df)
 ```
 
 ```{r}
-ggplot(df, aes(x = region, y = charges, fill = sex)) +
-  geom_boxplot() +
-  coord_flip()
+ggplot(df, aes(y = charges, x =)) +
+  geom_line()
 
-ggplot(df, aes(x = region, y = charges, fill = smoker)) +
-  geom_boxplot() +
-  
+# Load the required libraries
+library(tidyverse)
+library(caret)
 
+# Split the data into training and test sets
+set.seed(123)
+training_samples <- sample(x = nrow(df), size = floor(0.8 * nrow(df)))
+train.data <- df[training_samples, ]
+test.data <- df[-training_samples, ]
+
+degree=5
+
+test_mses <- training_mses <- c()
+
+poly_model = lm(charges ~ poly(bmi, 1) + poly(smoker, 2), data = train.data)
+
+y_hat_training = predict(poly_model)
+
+training_mses <- mean((df$charges - y_hat_training)^2)
+
+y_hat_test <- predict(poly_model, newdata = test.data)
+
+test_mses <- sqrt(mean((test.data$charges - y_hat_test)^2))
+
+mses <- data.frame(degree = 1:i, training_error = training_mses, test_error = test_mses)
+
+mses
+
+```
+
+
+```{r}
+# Install and load necessary packages
+#install.packages(c("boot", "caret", "MASS"))
+library(boot)
+library(MASS)
+library(caret)
+
+# Function to calculate RMSE
+rmse <- function(actual, predicted) {
+  sqrt(mean((actual - predicted)^2))
+}
+
+# Function to calculate MAE
+mae <- function(actual, predicted) {
+  mean(abs(actual - predicted))
+}
+
+# Simulate some data (replace this with your actual data)
+set.seed(123)
+
+# Number of bootstrap samples
+n_boot <- 100
+
+# Number of folds for cross-validation
+n_folds <- 5
+
+# Perform bootstrapping for the minority class
+boot_results <- boot(df[names(df), ], function(data, indices) {
+  fit <- glm(charges ~ ., data = df[names(df), ], family = "binomial")
+  return(coef(fit))
+}, R = n_boot)
+
+# Extract coefficients from bootstrapped results
+boot_coefs <- t(boot_results$t)
+
+# Perform k-fold cross-validation
+cv_results <- train(y ~ ., data = data, method = "glm", trControl = trainControl(method = "cv", number = n_folds, classProbs = TRUE))
+
+# Extract the best model
+best_model <- cv_results$finalModel
+
+# Split the data into training and testing sets (80/20)
+train_indices <- createDataPartition(data$y, p = 0.8, list = FALSE)
+train_data <- data[train_indices, ]
+test_data <- data[-train_indices, ]
+
+# Fit the best model on the training data
+final_model <- glm(y ~ ., data = train_data, family = "binomial")
+
+# Make predictions on the test data
+predicted_probs <- predict(final_model, newdata = test_data, type = "response")
+predicted <- ifelse(predicted_probs > 0.5, 1, 0)
+
+# Calculate RMSE and MAE
+rmse_value <- rmse(test_data$y, predicted_probs)
+mae_value <- mae(test_data$y, predicted)
+
+# Print coefficients, RMSE, and MAE
+cat("Coefficients:\n")
+print(coef(final_model))
+
+cat("\nRMSE:", rmse_value, "\n")
+cat("MAE:", mae_value, "\n")
 
 ```
