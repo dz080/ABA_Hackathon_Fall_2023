@@ -25,6 +25,7 @@ insurance_clean$region <- factor(insurance_clean$region)
 insurance_clean %<>% 
   select(-sex)
 
+
 insurance_clean <- insurance_clean %>%
   mutate(
   region = case_when(
