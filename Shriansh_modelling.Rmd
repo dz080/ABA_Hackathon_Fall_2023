@@ -35,6 +35,8 @@ insurance_clean <- insurance_clean %>%
   region == "southwest" ~ "SW",
     TRUE ~ region  
 ))
+
+insurance_clean$region <- factor(insurance_clean$region)
 ```
 
 ```{r}
