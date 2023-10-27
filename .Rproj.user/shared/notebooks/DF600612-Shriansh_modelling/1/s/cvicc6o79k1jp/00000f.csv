@@ -1,0 +1,5 @@
+"0","# Step 2: Load the dataset"
+"0","insurance <- read.csv(""Medical Insurance dataset.csv"")"
+"0","insurance_smokers <- insurance[insurance$smoker == 'yes', ]"
+"0",""
+"0","insurance <- rbind(insurance, insurance_smokers)"
