@@ -9,6 +9,8 @@ output: pdf_document
 ```{r}
 library(tidyverse)
 library(caret)
+library(dplyr)
+library(magrittr)
 ```
 
 
