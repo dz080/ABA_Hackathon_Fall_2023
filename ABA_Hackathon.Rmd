@@ -9,8 +9,29 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Data Cleaning
 ```{r}
+library(dplyr)
+library(magrittr)
+```
 
+# Data Cleaning
+```{r}
+# read in the data
+insurance <- read.csv("Medical Insurance dataset.csv")
+```
+
+```{r}
+# check for null values
+colSums(is.na(insurance)) # no nulls
+```
+
+```{r}
+# new data set with altered variables ready for eda
+insurance_clean <- insurance
+insurance_clean$female <- ifelse(insurance$sex == "female", 1, 0) # binary var
+insurance_clean$smoker <- ifelse(insurance$smoker == "yes", 1, 0) 
+insurance_clean$region <- factor(insurance_clean$region)
+insurance_clean %<>% 
+  select(-sex)
 ```
 
