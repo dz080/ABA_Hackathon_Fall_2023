@@ -1,76 +1,72 @@
 
 library(shiny)
+library(tidyverse)
+library(caret)
+library(lme4)
+library(forecast)
+
+set.seed(28)
+
+df <- read.csv('cleaned_df.csv')
+
+# Load the lme4 package
+df$region <- ifelse(df$region == "NE", 1, 
+                    ifelse(df$region == "NW", 2, 
+                           ifelse(df$region == "SE", 3, 4)))
 
 
-# model <- lm(mpg ~ wt + qsec + am, data = mtcars)
+# Multi-Level Varying Slopes & Varying Intercept Model
+model_1 <- lmer(charges ~ age*bmi + region + children + female + (1 | smoker) + (0 + bmi|smoker) , data = df)
 
 
-
-
-
-
-
-# Define UI for application that draws a histogram
-ui <- 
-  fluidPage(
-
-  
+ui <- fluidPage(
   
     pageWithSidebar(
       headerPanel('Get a Quote'),
       sidebarPanel(
     
         #age input
-        numericInput("age", label = h3("Age"), value = "empty"),
+        numericInput("age", label = h3("Age"), value = NULL),
         
       
         #gender input
         selectInput("selectGender", label = h3("Gender"), 
-                    choices = c("Please select one" = "", "Female" = 1, "Male" = 0),
-                    selected = "",
-                    selectize = TRUE),
+                    choices = c( "Female" = 1, "Male" = 0)),
         
         #BMI input
-        numericInput("bmi", label = h3("BMI"),  value = "empty"),
+        numericInput("bmi", label = h3("BMI"),  value = NULL),
        
         
         #children input
-        numericInput("children", label = h4("How many children do you have?"),  value = "empty"),
+        numericInput("children", label = h4("How many children do you have?"),  value = NULL),
         
         
         # Smoker
         selectInput("selectSmoker", label = h4("Do you smoke?"), 
-                    choices = list("Please select one" = "","Yes" = 1, "No" = 0),
-                    selected = "",
-                    selectize = TRUE),
+                    choices = list("Yes" = 1, "No" = 0)),
         
         
         # Region
         selectInput("selectRegion", label = h4("What region of the U.S. do you reside in?"), 
-                           choices = list("Please select one" = "", "SouthEast" = "SE", "SouthWest" = "SW", 
-                                          "NorthEast"="NE", "NorthWest"="NW"),
-                    selected = "",
-                    selectize = TRUE),
+                           choices = list( "SouthEast" = "SE", "SouthWest" = "SW", 
+                                          "NorthEast"="NE", "NorthWest"="NW")),
       
         
         # Add an action button to trigger the prediction
         actionButton("predict", "Predict"),
-      ),
+       ),
       
       
       mainPanel(
       
         # Display the predicted value
         textOutput("prediction")
-      
+        
+
       )
-      
-     
-      
-      
-      
     )
-)  
+)
+  
 
 
 server <- function(input, output) {
@@ -86,30 +82,32 @@ server <- function(input, output) {
     output$children <- renderPrint({ input$children })
     
     # Observe the event of the 'Predict' button being clicked
-    observeEvent(input$predict, {
-      # Collect input values
-      data <- data.frame(
-        age = as.numeric(input$age),
-        gender = as.numeric(input$selectGender),
-        bmi = as.numeric(input$bmi),
-        children = as.numeric(input$children),
-        smoker = as.numeric(input$selectSmoker),
+     observeEvent(input$predict, {
+       # Collect input values
+       data <- data.frame(
+        age = input$age,
+        female =input$selectGender,
+        bmi = input$bmi,
+        children = input$children,
+        smoker = input$selectSmoker,
         region = input$selectRegion
         # Add other input values as needed
       )
-      
-      # Handle missing values or perform other data cleaning as necessary
-      
-      # Make predictions using the pre-fitted model
-      prediction <- predict(model, newdata = data)
-      
+       
+       data$region <- ifelse(data$region == "NE", 1, 
+                           ifelse(data$region == "NW", 2, 
+                                  ifelse(data$region == "SE", 3, 4)))
+       
+
+     # Make predictions using the pre-fitted model
+      prediction <- predict(model_1, newdata = data)
+
       # Store the predicted value for rendering
       output$prediction <- renderText({
-        paste("Predicted value: ", prediction)
-      })
+         paste("Predicted value: ", prediction)
+       })
     })
-    
-    
+  
 }
 
 # Run the application 
