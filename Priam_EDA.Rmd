@@ -208,11 +208,16 @@ cat("Test RMSE (without Gender):", test_rmse_wog, "\n")
 
 ```{r}
 
-dim(df)
+test.data$predicted_charges <- predict(model, newdata = test.data, re.form = NA)
 
-ggplot() +
-  geom_line(data = data, aes(x = predictor_variable, y = predicted_values, color = grouping_variable)) +
-  labs(title = "Student Achievement vs. School Type", x = "School Type", y = "Student Achievement")
+jitter_binary <- function(a, jitt=0.05){ 
+  ifelse(a == 0, runif(length(a), 0, jitt), 
+         runif(length(a), 1 - jitt, 1)) }
 
-print(ggplot)
+test.data$predicted_charges <- jitter_binary(test.data$predicted_charges) 
+
+ggplot(test.data, aes(x = as.factor(smoker), y = jitter(predicted_charges))) +
+  geom_point()
+
+```
   
