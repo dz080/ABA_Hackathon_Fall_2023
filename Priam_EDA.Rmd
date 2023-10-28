@@ -125,7 +125,7 @@ library(caret)
 library(lme4)
 library(forecast)
 
-set.seed(28)
+set.seed(405)
 
 df <- read.csv('cleaned_df.csv')
 
@@ -135,7 +135,7 @@ df$region <- ifelse(df$region == "NE", 1,
                                         ifelse(df$region == "SE", 3, 4)))
 
 
-splitIndex <- createDataPartition(df$charges, p = 0.8, list = FALSE)
+splitIndex <- createDataPartition(df$charges, p = 0.9, list = FALSE)
 
 # Create the training, testing, and validation sets
 train.data <- df[splitIndex, ]
@@ -170,7 +170,10 @@ test_predictions_wog <- predict(model_1, newdata = test.data)
 test_rmse_wog <- mean(abs(test_predictions_wog - test.data$charges))
 cat("Test Mean Absolute Error (without Gender):", test_rmse_wog, "\n")
 
-accuracy(test_predictions_wog, test.data$charges)
+```
+
+```{r}
+print(accuracy(test_predictions_wog, test.data$charges))
 ```
 
 ```{r}
@@ -224,6 +227,7 @@ insurance_clean %>%
 theme_minimal()
 
 ```
+
 ```{r}
 train_MAE <- c()
 test_MAE <- c()
@@ -236,8 +240,8 @@ df$region <- ifelse(df$region == "NE", 1,
                                         ifelse(df$region == "SE", 3, 4)))
 for (i in seq(1000)){
 set.seed(i)
-  
-splitIndex <- createDataPartition(df$charges, p = 0.8, list = FALSE)
+
+splitIndex <- createDataPartition(df$charges, p = 0.9, list = FALSE)
 
 # Create the training, testing, and validation sets
 train.data <- df[splitIndex, ]
@@ -248,24 +252,34 @@ splitIndexValidation <- createDataPartition(remaining_data$charges, p = 0.5, lis
 test.data <- remaining_data[splitIndexValidation, ]
 validation.data <- remaining_data[-splitIndexValidation, ]
 
+
+# Multi-Level Varying Slopes & Varying Intercept Model
 model_1 <- lmer(charges ~ age*bmi + region + children + female + (1 | smoker) + (0 + bmi|smoker) , data = validation.data)
 
+fixef(model_1)
+coef(model_1)$smoker
+ranef(model_1)$smoker
 
-train_predictions_wog <- predict(model_1, newdata = train.data)
+#print(summary(model_1))
+
 validation_predictions_wog <- predict(model_1, newdata = validation.data)
+
+# Calculate the test RMSE
+validation_rmse_wog <- mean(abs(validation_predictions_wog - validation.data$charges))
+#cat("Validation Mean Absolute Error (without Gender):", validation_rmse_wog, "\n")
+
+validation_MAE <- append(validation_MAE, validation_rmse_wog)
+
+# Make predictions on the test set
 test_predictions_wog <- predict(model_1, newdata = test.data)
 
+# Calculate the test RMSE
+test_rmse_wog <- mean(abs(test_predictions_wog - test.data$charges))
+#cat("Test Mean Absolute Error (without Gender):", test_rmse_wog, "\n")
 
-validation_mae_wog <- mean(abs(validation_predictions_wog - validation.data$charges))
-train_mae_wog <- mean(abs(train_predictions_wog - train.data$charges))
-test_mae_wog <- mean(abs(test_predictions_wog - test.data$charges))
-
-test_MAE <- append(test_RMSE, test_mae_wog)
-train_MAE <- append(train_RMSE, train_mae_wog)
-validation_MAE <- append(validation_RMSE, validation_mae_wog)
-
+test_MAE <- append(test_MAE, test_rmse_wog)
 }
 
-View(data.frame(test_MAE,train_MAE, validation_MAE))
+View(data.frame(test_MAE))
 
 ``` 
