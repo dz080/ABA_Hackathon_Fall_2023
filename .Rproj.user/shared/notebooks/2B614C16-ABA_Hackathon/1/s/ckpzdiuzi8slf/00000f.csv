@@ -1,7 +1,0 @@
-"0","# new data set with altered variables ready for eda"
-"0","insurance_clean <- insurance"
-"0","insurance_clean$female <- ifelse(insurance$sex == ""female"", 1, 0) # binary var"
-"0","insurance_clean$smoker <- ifelse(insurance$smoker == ""yes"", 1, 0) "
-"0","insurance_clean$region <- factor(insurance_clean$region)"
-"0","insurance_clean %<>% "
-"0","  select(-sex)"

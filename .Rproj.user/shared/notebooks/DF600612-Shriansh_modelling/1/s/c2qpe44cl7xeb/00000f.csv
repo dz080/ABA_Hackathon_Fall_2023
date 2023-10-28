@@ -1,3 +1,0 @@
-"0","# Make predictions on the validation set"
-"0","validation_predictions_g <- predict(model_gender, newdata = validation_data)"
-"0","validation_predictions_wog <- predict(model_wo_gender, newdata = validation_data)"
