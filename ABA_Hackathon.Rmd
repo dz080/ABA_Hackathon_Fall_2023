@@ -12,6 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 library(dplyr)
 library(magrittr)
+library(lme4)
 ```
 
 # Data Cleaning
@@ -59,4 +60,288 @@ ggplot(insurance_clean, aes(x = bmi, y = charges)) +
   geom_smooth()
 ```
 
+# Gamma Model
+```{r}
+# dependent variable is high right skewed so we try gamma
+model_gamma <- glm(charges ~ ., data = insurance_clean, family = Gamma(link = "inverse"))
+summary(model_gamma)
+```
+
+## Residual plot
+```{r}
+# Create a data frame with observed and predicted values
+residuals_data <- data.frame(
+  Observed = insurance_clean$charges,
+  Predicted = fitted(model_gamma)
+)
+
+# Calculate residuals
+residuals_data$Residuals <- residuals(model_gamma, type = "response")
+
+# Create a residual plot
+ggplot(residuals_data, aes(x = Predicted, y = Residuals)) +
+  geom_point() +
+  geom_smooth(method = "loess", formula = y ~ x, color = "red", se = FALSE) +
+  labs(
+    x = "Predicted Values",
+    y = "Residuals",
+    title = "Residual Plot for Gamma GLM"
+  )
+```
+
+
+```{r}
+# dependent variable is high right skewed so we try gamma
+model_gamma2 <- glm(charges ~ female+age+bmi+children+smoker, data = insurance_clean, family = Gamma(link = "inverse"))
+summary(model_gamma2)
+
+anova(model_gamma2,model_gamma,test="LRT")
+
+AIC(model_gamma2)
+AIC(model_gamma)
+
+
+
+# Create a data frame with observed and predicted values
+residuals_data <- data.frame(
+  Observed = insurance_clean$charges,
+  Predicted = fitted(model_gamma2)
+)
+
+# Calculate residuals
+residuals_data$Residuals <- residuals(model_gamma2, type = "response")
+
+# Create a residual plot
+ggplot(residuals_data, aes(x = Predicted, y = Residuals)) +
+  geom_point() +
+  geom_smooth(method = "loess", formula = y ~ x, color = "red", se = FALSE) +
+  labs(
+    x = "Predicted Values",
+    y = "Residuals",
+    title = "Residual Plot for Gamma GLM"
+  )
+
+# graph clearly shows a pattern, bad model, scrap
+```
+
+## Undersampling 
+```{r}
+# separate majority and minority classes 
+majority_class <- filter(insurance_clean, smoker == 0)
+minority_class <- filter(insurance_clean, smoker == 1)
+
+set.seed(654)
+majority_downsampled <- sample_n(majority_class, nrow(minority_class))
+undersampled <- rbind(minority_class, majority_downsampled)
+```
+
+### Distribution of charges 
+```{r}
+undersampled %>%
+  drop_na() %>%
+  ggplot(aes(x = charges))+
+  geom_density(alpha = 0.5) + 
+  theme_minimal()+
+  theme(title=element_text(size=10),strip.text = element_text(size=10),axis.title = element_text(size=7), plot.caption = element_text(size=9),axis.text.x=element_text(size=8))
+```
+
+### Gamma model on undersampled data 
+
+```{r}
+library(lme4)
+library(glmm)
+model_gamma_under <- glmer(charges ~ age + bmi + children + (1|smoker) + region + charges, data = undersampled, family = Gamma(link = "inverse"))
+summary(model_gamma_under)
+```
+
+```{r}
+# Create a data frame with observed and predicted values
+residuals_data <- data.frame(
+  Observed = undersampled$charges,
+  Predicted = fitted(model_gamma_under)
+)
+
+# Calculate residuals
+residuals_data$Residuals <- residuals(model_gamma_under, type = "response")
+
+# Create a residual plot
+ggplot(residuals_data, aes(x = Predicted, y = Residuals)) +
+  geom_point() +
+  geom_smooth(method = "loess", formula = y ~ x, color = "red", se = FALSE) +
+  labs(
+    x = "Predicted Values",
+    y = "Residuals",
+    title = "Residual Plot for Gamma GLM"
+  )
+
+# it's bad 
+```
+
+
+## Prediction
+```{r}
+# split data set into training, validation, and test
+set.seed(654)
+trainIndex <- createDataPartition(insurance_clean$charges, p = 0.7, 
+                                  list = FALSE, 
+                                  times = 1)
+training_data <- insurance_clean[trainIndex, ]
+leftover <- insurance_clean[-trainIndex, ]
+
+# Now, split the remaining data into validation and test sets
+validateIndex <- createDataPartition(leftover$charges, p = 0.5, 
+                                    list = FALSE, 
+                                    times = 1)
+validation_data <- leftover[validateIndex, ]
+test_data <- leftover[-validateIndex, ]
+```
+
+# Multilevel models
+## varying intercepts constant slopes
+```{r}
+blah <- lmer(charges ~ age + bmi + children + region + female + (1 | smoker), 
+     data = training_data)
+
+residuals <- residuals(blah)
+
+# Create a residual plot
+ggplot(data = NULL, aes(x = fitted(blah), y = residuals)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+  xlab("Fitted Values") +
+  ylab("Residuals") +
+  ggtitle("Residual Plot") 
+# varying intercepts constant slopes
+coef(blah)
+```
+
+
+## transformed varying intercepts constant slopes
+```{r}
+blah <- lmer(sqrt(charges) ~ age + bmi + children + region + female + (1 | smoker), 
+     data = training_data)
+
+residuals <- residuals(blah)
+
+# Create a residual plot
+ggplot(data = NULL, aes(x = fitted(blah), y = residuals)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+  xlab("Fitted Values") +
+  ylab("Residuals") +
+  ggtitle("Residual Plot")
+coef(blah)
+```
+
+## transformed varying intercept varying slopes
+```{r}
+blah <- lmer(sqrt(charges) ~ age + bmi + children + region + female + (age + bmi + children + region + female | smoker), data = training_data)
+
+
+residuals <- residuals(blah)
+
+# Create a residual plot
+ggplot(data = NULL, aes(x = fitted(blah), y = residuals)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+  xlab("Fitted Values") +
+  ylab("Residuals") +
+  ggtitle("Residual Plot")
+
+coef(blah)
+```
+
+## varying intercept varying slopes
+```{r}
+blah <- lmer(charges ~ age + bmi + children + region + female + (age + bmi + children + region + female | smoker), data = training_data)
+
+
+residuals <- residuals(blah)
+
+# Create a residual plot
+ggplot(data = NULL, aes(x = fitted(blah), y = residuals)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+  xlab("Fitted Values") +
+  ylab("Residuals") +
+  ggtitle("Residual Plot")
+
+coef(blah)
+```
+
+## constant intercept varying slopes
+```{r}
+blah <- lmer(charges ~ age + bmi + children + region + female + (age + bmi + children + region + female - 1 | smoker), data = training_data)
+
+residuals <- residuals(blah)
+
+# Create a residual plot
+ggplot(data = NULL, aes(x = fitted(blah), y = residuals)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+  xlab("Fitted Values") +
+  ylab("Residuals") +
+  ggtitle("Residual Plot")
+
+coef(blah)
+```
+
+
+## transformed constant intercept varying slopes
+```{r}
+blah <- lmer(sqrt(charges) ~ age + bmi + children + region + female + (age + bmi + children + region + female - 1 | smoker), data = training_data)
+
+residuals <- residuals(blah)
+
+# Create a residual plot
+ggplot(data = NULL, aes(x = fitted(blah), y = residuals)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+  xlab("Fitted Values") +
+  ylab("Residuals") +
+  ggtitle("Residual Plot")
+
+coef(blah)
+```
+
+## not bad
+## varying slopes constant intercept
+```{r}
+blah <- lmer(sqrt(charges) ~  children + age:bmi + (region - 1 | smoker), data = training_data)
+coef(blah)
+
+residuals <- residuals(blah)
+
+# Create a residual plot
+ggplot(data = NULL, aes(x = fitted(blah), y = residuals)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+  xlab("Fitted Values") +
+  ylab("Residuals") +
+  ggtitle("Residual Plot")
+
+coef(blah)
+
+test_predictions_wog <- predict(blah, newdata = leftover)
+
+test_rmse_wog <- sqrt(mean((test_predictions_wog - leftover$charges)^2))
+cat("Test RMSE (without Gender):", test_rmse_wog, "\n")
+```
+
+## double levels
+```{r}
+blah <- lmer(charges ~ age + bmi + children + female + (1 | smoker) + (1 | region), data = insurance_clean)
+
+residuals <- residuals(blah)
+
+# Create a residual plot
+ggplot(data = NULL, aes(x = fitted(blah), y = residuals)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+  xlab("Fitted Values") +
+  ylab("Residuals") +
+  ggtitle("Residual Plot")
+
+coef(blah)
+```
 

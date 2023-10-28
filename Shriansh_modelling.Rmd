@@ -141,5 +141,4 @@ test_predictions_wog <- predict(model_wo_gender, newdata = testing_data)
 # Calculate the test RMSE
 test_rmse_wog <- sqrt(mean((test_predictions_wog - testing_data$charges)^2))
 cat("Test RMSE (with Gender):", test_rmse_wog, "\n")
-
 ```
