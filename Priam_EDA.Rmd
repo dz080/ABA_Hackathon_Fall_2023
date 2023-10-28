@@ -8,114 +8,6 @@ library(boot)
 
 ```
 
-```{r}
-df <- read.csv('cleaned_df.csv')
-# df_1 <- df[df$smoker == 1, ]
-# 
-# df <- rbind(df, df_1)
-
-```
-
-# EDA
-
-```{r}
-mean_values_sex <- tapply(df$charges, df$sex, mean)
-
-my_pallete <- c("#7ed5d3", "#36c9ef", "#2c93d5", "#12528b")
-  
-plot_sex <- ggplot(df, aes(x = charges, fill = sex)) +
-  geom_histogram() +
-  geom_vline(aes(xintercept = mean_values_sex[1]), color = "#7ed5d3", linetype = "dashed") +
-  geom_vline(aes(xintercept = mean_values_sex[2]), color = "#2c93d5", linetype = "dashed") +
-  annotate("text", x = mean_values_sex[1] + 100, y = 175, label = round(mean_values_sex[1], 2), color = "#7ed5d3") +
-  annotate("text", x = mean_values_sex[2] + 100, y = 200, label = round(mean_values_sex[2], 2), color = "#2c93d5") +
-  scale_fill_maual
-
-mean_values_region <- tapply(df$charges, df$region, mean)
-  
-plot_region <- ggplot(df, aes(x = charges, fill = region, )) +
-  geom_histogram() +
-  geom_vline(aes(xintercept = mean_values_region[1]), color = "#7ed5d3", linetype = "dashed") +
-  geom_vline(aes(xintercept = mean_values_region[2]), color = "#36c9ef", linetype = "dashed") +
-  geom_vline(aes(xintercept = mean_values_region[3]), color = "#2c93d5", linetype = "dashed") +
-  geom_vline(aes(xintercept = mean_values_region[4]), color = "#12528b", linetype = "dashed") +
-  scale_fill_manual(values = c("southwest" = "#7ed5d3", "southeast" = "#36c9ef", "northwest" = "#2c93d5", "northeast" = "#12528b"))
-
-mean_values_smokers <- tapply(df$charges, df$smoker, mean)
-  
-plot_smokers <- ggplot(df, aes(x = charges, fill = smoker)) +
-  geom_histogram() +
-  scale_fill_manual(values = my_pallete)
-  geom_vline(aes(xintercept = mean_values_smokers[1]), color = "#7ed5d3", linetype = "dashed") +
-  geom_vline(aes(xintercept = mean_values_smokers[2]), color = "#2c93d5", linetype = "dashed") +
-  annotate("text", x = mean_values_smokers[1] + 100, y = 175, label = round(mean_values_smokers[1], 2), color = "#7ed5d3") +
-  annotate("text", x = mean_values_smokers[2] + 100, y = 200, label = round(mean_values_smokers[2], 2), color = "#2c93d5")
-
-ggplot(df, aes(x = charges, fill = smoker)) +
-  geom_histogram() +
-  scale_color_manual(values=c("#7ed5d3", "#2c93d5"))
-
-
-grid.arrange(plot_sex,plot_region, ncol = 1, nrow = 2)
-```
-
-```{r}
-ggplot(df, aes(x = age, y = charges, fill = as.factor(sex))) +
-  geom_bar(stat = "identity", position = position_fill(reverse = TRUE)) +
-  labs(y = "Percentage (%)") +
-  scale_fill_manual(
-    name = "NOAA Thresholds",
-    labels = c( "% Below OSHA","% Within OSHA","% Above OSHA"),
-    values = c("female" = "paleturquoise3", "male" = "chartreuse3")) +
-  theme_minimal() +
-  coord_flip() +
-  geom_text(aes(label = paste0(round(percentage, 1), "%")), position = position_fill(vjust = 0.25)) +
-  scale_x_discrete(labels = c("Ground Level", "Middle Levels", "Upper Levels")) +
-  theme(axis.text.x = element_text(size = 12,),
-        axis.text.y = element_text(size = 12,),
-        axis.title.x = element_text(size = 14, face = "bold"),   # Increase size and make x-axis title bold
-        axis.title.y = element_text(size = 14, face = "bold")) +
-  scale_y_continuous(breaks = seq(0,1,.1), labels = percent_format(scale = 100))
-
-
-```
-```{r}
-result_smoker <- df %>%
-  group_by(smoker) %>%
-  summarise(
-    mean_charges = mean(charges),
-    min_charges = min(charges),
-    max_charges = max(charges)
-  )
-
-result_sex <- df %>%
-  group_by(sex) %>%
-  summarise(
-    mean_charges = mean(charges)
-  )
-
-result_children <- df %>%
-  group_by(children) %>%
-  summarise(
-    mean_charges = mean(charges)
-  )
-
-result_children <- df %>%
-  group_by(children) %>%
-  summarise(
-    mean_charges = mean(charges)
-  )
-
-result_children <- df %>%
-  group_by(age) %>%
-  summarise(
-    mean_charges = mean(charges)
-  )
-
-summary_df <- summary(df)
-```
-
-
 # Best Model
 
 ```{r}
@@ -125,7 +17,7 @@ library(caret)
 library(lme4)
 library(forecast)
 
-set.seed(405)
+set.seed(368)
 
 df <- read.csv('cleaned_df.csv')
 
@@ -148,7 +40,7 @@ validation.data <- remaining_data[-splitIndexValidation, ]
 
 
 # Multi-Level Varying Slopes & Varying Intercept Model
-model_1 <- lmer(charges ~ age*bmi + region + children + female + (1 | smoker) + (0 + bmi|smoker) , data = validation.data)
+model_1 <- lmer(charges ~ age*bmi + region + children + female + (1 | smoker) + (0 + bmi|smoker) , data = train.data)
 
 fixef(model_1)
 coef(model_1)$smoker
@@ -165,69 +57,29 @@ cat("Validation Mean Absolute Error (without Gender):", validation_rmse_wog, "\n
 
 # Make predictions on the test set
 test_predictions_wog <- predict(model_1, newdata = test.data)
+train_predictions_wog <- predict(model_1, newdata = train.data)
 
 # Calculate the test RMSE
 test_rmse_wog <- mean(abs(test_predictions_wog - test.data$charges))
+validation_rmse_wog <- mean(abs(train_predictions_wog - train.data$charges))
+
 cat("Test Mean Absolute Error (without Gender):", test_rmse_wog, "\n")
 
 ```
 
 ```{r}
+summary(model_1)
+
 print(accuracy(test_predictions_wog, test.data$charges))
+print(accuracy(train_predictions_wog, train.data$charges))
 ```
 
-```{r}
-
-residuals <- residuals(model_1)
-
-# Create a residual plot
-ggplot(data = NULL, aes(x = fitted(model_1), y = residuals)) +
-  geom_point() +
-  geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
-  xlab("Fitted Values") +
-  ylab("Residuals") +
-  ggtitle("Residual Plot")
-```
 ```{r}
 model_performance(model_1)
-```
 
-```{r}
-# Make predictions on the test set
-validation_predictions_wog <- predict(model_1, newdata = validation.data)
-
-# Calculate the test RMSE
-validation_rmse_wog <- mean(abs(validation_predictions_wog - validation.data$charges))
-cat("Validation Mean Absolute Error (without Gender):", validation_rmse_wog, "\n")
-
-
-# Make predictions on the test set
-test_predictions_wog <- predict(model_1, newdata = test.data)
-
-# Calculate the test RMSE
-test_rmse_wog <- mean(abs(test_predictions_wog - test.data$charges))
-cat("Test Mean Absolute Error (without Gender):", test_rmse_wog, "\n")
+coefficients(model_1)
 
 ```
-
-
-```{r}
-
-insurance_clean %>% 
-  ggplot(aes(age, charges)) +
-  geom_col(aes(age), position = "dodge", width= 0.5)+
-  geom_smooth()+
-  facet_wrap(~children) +
-  theme(title=element_text(size=8),
-      strip.text = element_text(size=10),
-      axis.title = element_text(size=5),
-      plot.caption = element_text(size=9),
-      axis.text.x=element_text(size=7), 
-      axis.text.y=element_text(size=7))+
-theme_minimal()
-
-```
-
 ```{r}
 train_MAE <- c()
 test_MAE <- c()
@@ -254,7 +106,7 @@ validation.data <- remaining_data[-splitIndexValidation, ]
 
 
 # Multi-Level Varying Slopes & Varying Intercept Model
-model_1 <- lmer(charges ~ age*bmi + region + children + female + (1 | smoker) + (0 + bmi|smoker) , data = validation.data)
+model_1 <- lmer(charges ~ age*bmi + region + children + female + (1 | smoker) + (0 + bmi|smoker) , data = train.data)
 
 fixef(model_1)
 coef(model_1)$smoker
@@ -265,19 +117,19 @@ ranef(model_1)$smoker
 validation_predictions_wog <- predict(model_1, newdata = validation.data)
 
 # Calculate the test RMSE
-validation_rmse_wog <- mean(abs(validation_predictions_wog - validation.data$charges))
+validation_mae_wog <- mean(abs(validation_predictions_wog - validation.data$charges))
 #cat("Validation Mean Absolute Error (without Gender):", validation_rmse_wog, "\n")
 
-validation_MAE <- append(validation_MAE, validation_rmse_wog)
+validation_MAE <- append(validation_MAE, validation_mae_wog)
 
 # Make predictions on the test set
 test_predictions_wog <- predict(model_1, newdata = test.data)
 
 # Calculate the test RMSE
-test_rmse_wog <- mean(abs(test_predictions_wog - test.data$charges))
+test_mae_wog <- mean(abs(test_predictions_wog - test.data$charges))
 #cat("Test Mean Absolute Error (without Gender):", test_rmse_wog, "\n")
 
-test_MAE <- append(test_MAE, test_rmse_wog)
+test_MAE <- append(test_MAE, test_mae_wog)
 }
 
 View(data.frame(test_MAE))
