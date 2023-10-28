@@ -43,14 +43,17 @@ plot_region <- ggplot(df, aes(x = charges, fill = region, )) +
 
 mean_values_smokers <- tapply(df$charges, df$smoker, mean)
   
-plot_smokers <- ggplot(df, aes(x = charges, fill = sex)) +
+plot_smokers <- ggplot(df, aes(x = charges, fill = smoker)) +
   geom_histogram() +
+  scale_fill_manual(values = my_pallete)
   geom_vline(aes(xintercept = mean_values_smokers[1]), color = "#7ed5d3", linetype = "dashed") +
   geom_vline(aes(xintercept = mean_values_smokers[2]), color = "#2c93d5", linetype = "dashed") +
   annotate("text", x = mean_values_smokers[1] + 100, y = 175, label = round(mean_values_smokers[1], 2), color = "#7ed5d3") +
-  annotate("text", x = mean_values_smokers[2] + 100, y = 200, label = round(mean_values_smokers[2], 2), color = "#2c93d5") +
-  scale_fill_manual(values = my_pallete)
+  annotate("text", x = mean_values_smokers[2] + 100, y = 200, label = round(mean_values_smokers[2], 2), color = "#2c93d5")
 
+ggplot(df, aes(x = charges, fill = smoker)) +
+  geom_histogram() +
+  scale_color_manual(values=c("#7ed5d3", "#2c93d5"))
 
 
 grid.arrange(plot_sex,plot_region, ncol = 1, nrow = 2)
@@ -119,42 +122,57 @@ summary_df <- summary(df)
 # Load the required libraries
 library(tidyverse)
 library(caret)
+library(lme4)
+library(forecast)
 
-# Split the data into training and test sets
-set.seed(123)
-training_samples <- sample(x = nrow(df), size = floor(0.9 * nrow(df)))
-train.data <- df[training_samples, ]
-test.data <- df[-training_samples, ]
+set.seed(28)
+
+df <- read.csv('cleaned_df.csv')
 
 # Load the lme4 package
 df$region <- ifelse(df$region == "NE", 1, 
                                  ifelse(df$region == "NW", 2, 
-                                        ifelse(df$region == "SE", 3, 4
-                                 )))
+                                        ifelse(df$region == "SE", 3, 4)))
 
-library(lme4)
 
-# Load the data
-# Specify the dependent variable
-dependent_variable <- "charges"
+splitIndex <- createDataPartition(df$charges, p = 0.8, list = FALSE)
 
-# Specify the independent variables
-independent_variables <- c("sex", "smoker", "region", "children","bmi","female")
+# Create the training, testing, and validation sets
+train.data <- df[splitIndex, ]
+remaining_data <- df[-splitIndex, ]
 
-# Create the multiple level model
-model_1 <- lmer(charges ~ age*bmi + region + children + (1 | smoker) + (0+bmi|smoker) , data = train.data)
+splitIndexValidation <- createDataPartition(remaining_data$charges, p = 0.5, list = FALSE)
+
+test.data <- remaining_data[splitIndexValidation, ]
+validation.data <- remaining_data[-splitIndexValidation, ]
+
+
+# Multi-Level Varying Slopes & Varying Intercept Model
+model_1 <- lmer(charges ~ age*bmi + region + children + female + (1 | smoker) + (0 + bmi|smoker) , data = validation.data)
+
 fixef(model_1)
 coef(model_1)$smoker
 ranef(model_1)$smoker
 
-model_2 <- lmer(charges ~ age*bmi + region + children  + (1 | smoker) , data = train.data)
-
-model_3 <- lmer(charges ~ age*bmi + region + children  + (1 | smoker) , data = train.data)
-
-# Estimate the model parameters
 print(summary(model_1))
-print(summary(model_2))
+
+validation_predictions_wog <- predict(model_1, newdata = validation.data)
+
+# Calculate the test RMSE
+validation_rmse_wog <- mean(abs(validation_predictions_wog - validation.data$charges))
+cat("Validation Mean Absolute Error (without Gender):", validation_rmse_wog, "\n")
+
+
+# Make predictions on the test set
+test_predictions_wog <- predict(model_1, newdata = test.data)
+
+# Calculate the test RMSE
+test_rmse_wog <- mean(abs(test_predictions_wog - test.data$charges))
+cat("Test Mean Absolute Error (without Gender):", test_rmse_wog, "\n")
+
+accuracy(test_predictions_wog, test.data$charges)
 ```
+
 ```{r}
 
 residuals <- residuals(model_1)
@@ -167,57 +185,87 @@ ggplot(data = NULL, aes(x = fitted(model_1), y = residuals)) +
   ylab("Residuals") +
   ggtitle("Residual Plot")
 ```
-
-```{r}
-
-residuals <- residuals(model_2)
-
-# Create a residual plot
-ggplot(data = NULL, aes(x = fitted(model_2), y = residuals)) +
-  geom_point() +
-  geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
-  xlab("Fitted Values") +
-  ylab("Residuals") +
-  ggtitle("Residual Plot")
-```
-
-
-
 ```{r}
 model_performance(model_1)
-model_performance(model_2)
 ```
 
 ```{r}
 # Make predictions on the test set
-test_predictions_wog <- predict(model_2, newdata = test.data)
+validation_predictions_wog <- predict(model_1, newdata = validation.data)
 
 # Calculate the test RMSE
-test_rmse_wog <- sqrt(mean((test_predictions_wog - test.data$charges)^2))
-cat("Test RMSE (without Gender):", test_rmse_wog, "\n")
+validation_rmse_wog <- mean(abs(validation_predictions_wog - validation.data$charges))
+cat("Validation Mean Absolute Error (without Gender):", validation_rmse_wog, "\n")
+
 
 # Make predictions on the test set
 test_predictions_wog <- predict(model_1, newdata = test.data)
 
 # Calculate the test RMSE
-test_rmse_wog <- sqrt(mean((test_predictions_wog - test.data$charges)^2))
-cat("Test RMSE (without Gender):", test_rmse_wog, "\n")
+test_rmse_wog <- mean(abs(test_predictions_wog - test.data$charges))
+cat("Test Mean Absolute Error (without Gender):", test_rmse_wog, "\n")
 
 ```
 
 
 ```{r}
 
-test.data$predicted_charges <- predict(model, newdata = test.data, re.form = NA)
-
-jitter_binary <- function(a, jitt=0.05){ 
-  ifelse(a == 0, runif(length(a), 0, jitt), 
-         runif(length(a), 1 - jitt, 1)) }
-
-test.data$predicted_charges <- jitter_binary(test.data$predicted_charges) 
-
-ggplot(test.data, aes(x = as.factor(smoker), y = jitter(predicted_charges))) +
-  geom_point()
+insurance_clean %>% 
+  ggplot(aes(age, charges)) +
+  geom_col(aes(age), position = "dodge", width= 0.5)+
+  geom_smooth()+
+  facet_wrap(~children) +
+  theme(title=element_text(size=8),
+      strip.text = element_text(size=10),
+      axis.title = element_text(size=5),
+      plot.caption = element_text(size=9),
+      axis.text.x=element_text(size=7), 
+      axis.text.y=element_text(size=7))+
+theme_minimal()
 
 ```
+```{r}
+train_MAE <- c()
+test_MAE <- c()
+validation_MAE <- c()
+
+df <- read.csv('cleaned_df.csv')
+
+df$region <- ifelse(df$region == "NE", 1, 
+                                 ifelse(df$region == "NW", 2, 
+                                        ifelse(df$region == "SE", 3, 4)))
+for (i in seq(1000)){
+set.seed(i)
   
+splitIndex <- createDataPartition(df$charges, p = 0.8, list = FALSE)
+
+# Create the training, testing, and validation sets
+train.data <- df[splitIndex, ]
+remaining_data <- df[-splitIndex, ]
+
+splitIndexValidation <- createDataPartition(remaining_data$charges, p = 0.5, list = FALSE)
+
+test.data <- remaining_data[splitIndexValidation, ]
+validation.data <- remaining_data[-splitIndexValidation, ]
+
+model_1 <- lmer(charges ~ age*bmi + region + children + female + (1 | smoker) + (0 + bmi|smoker) , data = validation.data)
+
+
+train_predictions_wog <- predict(model_1, newdata = train.data)
+validation_predictions_wog <- predict(model_1, newdata = validation.data)
+test_predictions_wog <- predict(model_1, newdata = test.data)
+
+
+validation_mae_wog <- mean(abs(validation_predictions_wog - validation.data$charges))
+train_mae_wog <- mean(abs(train_predictions_wog - train.data$charges))
+test_mae_wog <- mean(abs(test_predictions_wog - test.data$charges))
+
+test_MAE <- append(test_RMSE, test_mae_wog)
+train_MAE <- append(train_RMSE, train_mae_wog)
+validation_MAE <- append(validation_RMSE, validation_mae_wog)
+
+}
+
+View(data.frame(test_MAE,train_MAE, validation_MAE))
+
+``` 

@@ -164,8 +164,13 @@ insurance_clean %>%
   ggplot(aes(age, charges)) +
   geom_col(aes(age), position = "dodge", width= 0.5)+
   geom_smooth()+
-  facet_wrap(~children)+
-theme(title=element_text(size=8),strip.text = element_text(size=10),axis.title = element_text(size=5), plot.caption = element_text(size=9),axis.text.x=element_text(size=7), axis.text.y=element_text(size=7))+
+  facet_wrap(~children) +
+  theme(title=element_text(size=8),
+      strip.text = element_text(size=10),
+      axis.title = element_text(size=5),
+      plot.caption = element_text(size=9),
+      axis.text.x=element_text(size=7), 
+      axis.text.y=element_text(size=7))+
 theme_minimal()
 
 
