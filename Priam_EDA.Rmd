@@ -9,7 +9,11 @@ library(boot)
 ```
 
 ```{r}
-df <- read.csv('Medical Insurance dataset.csv')
+df <- read.csv('cleaned_df.csv')
+# df_1 <- df[df$smoker == 1, ]
+# 
+# df <- rbind(df, df_1)
+
 ```
 
 # EDA
@@ -108,103 +112,107 @@ result_children <- df %>%
 summary_df <- summary(df)
 ```
 
-```{r}
-ggplot(df, aes(y = charges, x =)) +
-  geom_line()
 
+# Best Model
+
+```{r}
 # Load the required libraries
 library(tidyverse)
 library(caret)
 
 # Split the data into training and test sets
 set.seed(123)
-training_samples <- sample(x = nrow(df), size = floor(0.8 * nrow(df)))
+training_samples <- sample(x = nrow(df), size = floor(0.9 * nrow(df)))
 train.data <- df[training_samples, ]
 test.data <- df[-training_samples, ]
 
-degree=5
+# Load the lme4 package
+df$region <- ifelse(df$region == "NE", 1, 
+                                 ifelse(df$region == "NW", 2, 
+                                        ifelse(df$region == "SE", 3, 4
+                                 )))
 
-test_mses <- training_mses <- c()
+library(lme4)
 
-poly_model = lm(charges ~ poly(bmi, 1) + poly(smoker, 2), data = train.data)
+# Load the data
+# Specify the dependent variable
+dependent_variable <- "charges"
 
-y_hat_training = predict(poly_model)
+# Specify the independent variables
+independent_variables <- c("sex", "smoker", "region", "children","bmi","female")
 
-training_mses <- mean((df$charges - y_hat_training)^2)
+# Create the multiple level model
+model_1 <- lmer(charges ~ age*bmi + region + children + (1 | smoker) + (0+bmi|smoker) , data = train.data)
+fixef(model_1)
+coef(model_1)$smoker
+ranef(model_1)$smoker
 
-y_hat_test <- predict(poly_model, newdata = test.data)
+model_2 <- lmer(charges ~ age*bmi + region + children  + (1 | smoker) , data = train.data)
 
-test_mses <- sqrt(mean((test.data$charges - y_hat_test)^2))
+model_3 <- lmer(charges ~ age*bmi + region + children  + (1 | smoker) , data = train.data)
 
-mses <- data.frame(degree = 1:i, training_error = training_mses, test_error = test_mses)
+# Estimate the model parameters
+print(summary(model_1))
+print(summary(model_2))
+```
+```{r}
 
-mses
+residuals <- residuals(model_1)
+
+# Create a residual plot
+ggplot(data = NULL, aes(x = fitted(model_1), y = residuals)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+  xlab("Fitted Values") +
+  ylab("Residuals") +
+  ggtitle("Residual Plot")
+```
+
+```{r}
+
+residuals <- residuals(model_2)
+
+# Create a residual plot
+ggplot(data = NULL, aes(x = fitted(model_2), y = residuals)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+  xlab("Fitted Values") +
+  ylab("Residuals") +
+  ggtitle("Residual Plot")
+```
+
+
+
+```{r}
+model_performance(model_1)
+model_performance(model_2)
+```
+
+```{r}
+# Make predictions on the test set
+test_predictions_wog <- predict(model_2, newdata = test.data)
+
+# Calculate the test RMSE
+test_rmse_wog <- sqrt(mean((test_predictions_wog - test.data$charges)^2))
+cat("Test RMSE (without Gender):", test_rmse_wog, "\n")
+
+# Make predictions on the test set
+test_predictions_wog <- predict(model_1, newdata = test.data)
+
+# Calculate the test RMSE
+test_rmse_wog <- sqrt(mean((test_predictions_wog - test.data$charges)^2))
+cat("Test RMSE (without Gender):", test_rmse_wog, "\n")
 
 ```
 
 
 ```{r}
-# Install and load necessary packages
-#install.packages(c("boot", "caret", "MASS"))
-library(boot)
-library(MASS)
-library(caret)
 
-# Function to calculate RMSE
-rmse <- function(actual, predicted) {
-  sqrt(mean((actual - predicted)^2))
-}
+dim(df)
 
-# Function to calculate MAE
-mae <- function(actual, predicted) {
-  mean(abs(actual - predicted))
-}
+ggplot() +
+  geom_line(data = data, aes(x = predictor_variable, y = predicted_values, color = grouping_variable)) +
+  labs(title = "Student Achievement vs. School Type", x = "School Type", y = "Student Achievement")
 
-# Simulate some data (replace this with your actual data)
-set.seed(123)
-
-# Number of bootstrap samples
-n_boot <- 100
-
-# Number of folds for cross-validation
-n_folds <- 5
-
-# Perform bootstrapping for the minority class
-boot_results <- boot(df[names(df), ], function(data, indices) {
-  fit <- glm(charges ~ ., data = df[names(df), ], family = "binomial")
-  return(coef(fit))
-}, R = n_boot)
-
-# Extract coefficients from bootstrapped results
-boot_coefs <- t(boot_results$t)
-
-# Perform k-fold cross-validation
-cv_results <- train(y ~ ., data = data, method = "glm", trControl = trainControl(method = "cv", number = n_folds, classProbs = TRUE))
-
-# Extract the best model
-best_model <- cv_results$finalModel
-
-# Split the data into training and testing sets (80/20)
-train_indices <- createDataPartition(data$y, p = 0.8, list = FALSE)
-train_data <- data[train_indices, ]
-test_data <- data[-train_indices, ]
-
-# Fit the best model on the training data
-final_model <- glm(y ~ ., data = train_data, family = "binomial")
-
-# Make predictions on the test data
-predicted_probs <- predict(final_model, newdata = test_data, type = "response")
-predicted <- ifelse(predicted_probs > 0.5, 1, 0)
-
-# Calculate RMSE and MAE
-rmse_value <- rmse(test_data$y, predicted_probs)
-mae_value <- mae(test_data$y, predicted)
-
-# Print coefficients, RMSE, and MAE
-cat("Coefficients:\n")
-print(coef(final_model))
-
-cat("\nRMSE:", rmse_value, "\n")
-cat("MAE:", mae_value, "\n")
-
-```
+print(ggplot)
+  
