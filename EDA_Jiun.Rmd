@@ -70,7 +70,24 @@ ggplot(data = melted_cor_matrix, aes(x = Var1, y = Var2, fill = value)) +
   theme(axis.text.x = element_text(angle = 45, vjust = 1, size = 12, hjust = 1),
         axis.text.y = element_text(size = 12)) +
   coord_fixed()
+```
 
+# Covariance
+```{r}
+cov_matrix <- cov(cor_df)
+print(cov_matrix)
+melted_cov_matrix <- as.data.frame(as.table(cov_matrix))
+
+ggplot(data = melted_cov_matrix, aes(x = Var1, y = Var2, fill = Freq)) +
+  geom_tile() +
+  geom_text(aes(label = sprintf("%.2f", Freq)), vjust = 1) +
+  scale_fill_gradient2(low = "#7ed5d3", high = "#36c9ef", mid = "white", 
+                       midpoint = 0, space = "Lab", 
+                       name = "Pearson\nCorrelation") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, size = 12, hjust = 1),
+        axis.text.y = element_text(size = 12)) +
+  coord_fixed()
 ```
 - There's no multicollinearity found.
 
@@ -93,7 +110,7 @@ my_pallete <- c("#7ed5d3", "#36c9ef", "#2c93d5", "#12528b")
 ggplot(data = melted_cor_matrix, aes(x = Var1, y = Var2, fill = value)) +
   geom_tile() +
   geom_text(aes(label = sprintf("%.2f", value)), vjust = 1) +
-  scale_fill_gradient2(low = "#36c9ef", high = "#2c93d5", mid = "white", 
+  scale_fill_gradient2(low = "red", high = "#36c9ef", mid = "white", 
                        midpoint = 0, limit = c(-1, 1), space = "Lab", 
                        name = "Pearson\nCorrelation") +
   theme_minimal() +
@@ -108,9 +125,8 @@ ggplot(data = melted_cor_matrix, aes(x = Var1, y = Var2, fill = value)) +
 ```{r}
 insurance_clean %>%
   drop_na() %>%
-  ggplot(aes(x = charges, colour=region, fill=region))+
+  ggplot(aes(x = charges))+
   geom_density(alpha = 0.5) + 
-  facet_wrap(~ smoker) +
   theme_minimal()+
   theme(title=element_text(size=10),strip.text = element_text(size=10),axis.title = element_text(size=7), plot.caption = element_text(size=9),axis.text.x=element_text(size=8))
 
@@ -128,7 +144,7 @@ insurance_clean %>%
   drop_na() %>%
   ggplot(aes(x = charges)) +
   geom_density(alpha = 0.5) + 
-  facet_wrap(~ female,nrow=2) +
+  facet_wrap(~ children,nrow=2) +
   theme_minimal()+
   theme(title=element_text(size=10),strip.text = element_text(size=10),axis.title = element_text(size=7), plot.caption = element_text(size=9),axis.text.x=element_text(size=8))
 
