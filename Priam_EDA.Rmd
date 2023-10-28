@@ -2,6 +2,9 @@
 library(ggplot2)
 library(ggpubr)
 library(gridExtra)
+library(ggplot2)
+library(dplyr)
+library(boot)
 
 ```
 
@@ -12,32 +15,196 @@ df <- read.csv('Medical Insurance dataset.csv')
 # EDA
 
 ```{r}
-mean_values <- tapply(df$charges, df$sex, mean)
+mean_values_sex <- tapply(df$charges, df$sex, mean)
+
+my_pallete <- c("#7ed5d3", "#36c9ef", "#2c93d5", "#12528b")
   
 plot_sex <- ggplot(df, aes(x = charges, fill = sex)) +
   geom_histogram() +
-  geom_vline(aes(xintercept = mean_values[1]), color = "blue", linetype = "dashed") +
-  geom_vline(aes(xintercept = mean_values[2]), color = "red", linetype = "dashed") +
-  annotate("text", x = mean_values[1] + 100, y = 175, label = round(mean_values[1], 2), color = "blue") +
-  annotate("text", x = mean_values[2] + 100, y = 200, label = round(mean_values[2], 2), color = "red")
+  geom_vline(aes(xintercept = mean_values_sex[1]), color = "#7ed5d3", linetype = "dashed") +
+  geom_vline(aes(xintercept = mean_values_sex[2]), color = "#2c93d5", linetype = "dashed") +
+  annotate("text", x = mean_values_sex[1] + 100, y = 175, label = round(mean_values_sex[1], 2), color = "#7ed5d3") +
+  annotate("text", x = mean_values_sex[2] + 100, y = 200, label = round(mean_values_sex[2], 2), color = "#2c93d5") +
+  scale_fill_maual
 
-mean_values <- tapply(df$charges, df$region, mean)
+mean_values_region <- tapply(df$charges, df$region, mean)
   
-plot_region <- ggplot(df, aes(x = charges, fill = region)) +
+plot_region <- ggplot(df, aes(x = charges, fill = region, )) +
   geom_histogram() +
-  geom_vline(aes(xintercept = mean_values[1]), color = "blue", linetype = "dashed") +
-  geom_vline(aes(xintercept = mean_values[2]), color = "red", linetype = "dashed") +
-  geom_vline(aes(xintercept = mean_values[3]), color = "green", linetype = "dashed") +
-  geom_vline(aes(xintercept = mean_values[4]), color = "yellow", linetype = "dashed") +
-  annotate("text", x = mean_values[1] + 100, y = 175, label = round(mean_values[1], 2), color = "blue") +
-  annotate("text", x = mean_values[2] + 100, y = 200, label = round(mean_values[2], 2), color = "red")
-annotate("text", x = mean_values[3] + 100, y = 175, label = round(mean_values[3], 2), color = "green") +
-  annotate("text", x = mean_values[4] + 100, y = 175, label = round(mean_values[4], 2), color = "yellow")
+  geom_vline(aes(xintercept = mean_values_region[1]), color = "#7ed5d3", linetype = "dashed") +
+  geom_vline(aes(xintercept = mean_values_region[2]), color = "#36c9ef", linetype = "dashed") +
+  geom_vline(aes(xintercept = mean_values_region[3]), color = "#2c93d5", linetype = "dashed") +
+  geom_vline(aes(xintercept = mean_values_region[4]), color = "#12528b", linetype = "dashed") +
+  scale_fill_manual(values = c("southwest" = "#7ed5d3", "southeast" = "#36c9ef", "northwest" = "#2c93d5", "northeast" = "#12528b"))
 
-
-
-
-
+mean_values_smokers <- tapply(df$charges, df$smoker, mean)
   
+plot_smokers <- ggplot(df, aes(x = charges, fill = sex)) +
+  geom_histogram() +
+  geom_vline(aes(xintercept = mean_values_smokers[1]), color = "#7ed5d3", linetype = "dashed") +
+  geom_vline(aes(xintercept = mean_values_smokers[2]), color = "#2c93d5", linetype = "dashed") +
+  annotate("text", x = mean_values_smokers[1] + 100, y = 175, label = round(mean_values_smokers[1], 2), color = "#7ed5d3") +
+  annotate("text", x = mean_values_smokers[2] + 100, y = 200, label = round(mean_values_smokers[2], 2), color = "#2c93d5") +
+  scale_fill_manual(values = my_pallete)
+
+
+
+grid.arrange(plot_sex,plot_region, ncol = 1, nrow = 2)
+```
+
+```{r}
+ggplot(df, aes(x = age, y = charges, fill = as.factor(sex))) +
+  geom_bar(stat = "identity", position = position_fill(reverse = TRUE)) +
+  labs(y = "Percentage (%)") +
+  scale_fill_manual(
+    name = "NOAA Thresholds",
+    labels = c( "% Below OSHA","% Within OSHA","% Above OSHA"),
+    values = c("female" = "paleturquoise3", "male" = "chartreuse3")) +
+  theme_minimal() +
+  coord_flip() +
+  geom_text(aes(label = paste0(round(percentage, 1), "%")), position = position_fill(vjust = 0.25)) +
+  scale_x_discrete(labels = c("Ground Level", "Middle Levels", "Upper Levels")) +
+  theme(axis.text.x = element_text(size = 12,),
+        axis.text.y = element_text(size = 12,),
+        axis.title.x = element_text(size = 14, face = "bold"),   # Increase size and make x-axis title bold
+        axis.title.y = element_text(size = 14, face = "bold")) +
+  scale_y_continuous(breaks = seq(0,1,.1), labels = percent_format(scale = 100))
+
+
+```
+```{r}
+result_smoker <- df %>%
+  group_by(smoker) %>%
+  summarise(
+    mean_charges = mean(charges),
+    min_charges = min(charges),
+    max_charges = max(charges)
+  )
+
+result_sex <- df %>%
+  group_by(sex) %>%
+  summarise(
+    mean_charges = mean(charges)
+  )
+
+result_children <- df %>%
+  group_by(children) %>%
+  summarise(
+    mean_charges = mean(charges)
+  )
+
+result_children <- df %>%
+  group_by(children) %>%
+  summarise(
+    mean_charges = mean(charges)
+  )
+
+result_children <- df %>%
+  group_by(age) %>%
+  summarise(
+    mean_charges = mean(charges)
+  )
+
+summary_df <- summary(df)
+```
+
+```{r}
+ggplot(df, aes(y = charges, x =)) +
+  geom_line()
+
+# Load the required libraries
+library(tidyverse)
+library(caret)
+
+# Split the data into training and test sets
+set.seed(123)
+training_samples <- sample(x = nrow(df), size = floor(0.8 * nrow(df)))
+train.data <- df[training_samples, ]
+test.data <- df[-training_samples, ]
+
+degree=5
+
+test_mses <- training_mses <- c()
+
+poly_model = lm(charges ~ poly(bmi, 1) + poly(smoker, 2), data = train.data)
+
+y_hat_training = predict(poly_model)
+
+training_mses <- mean((df$charges - y_hat_training)^2)
+
+y_hat_test <- predict(poly_model, newdata = test.data)
+
+test_mses <- sqrt(mean((test.data$charges - y_hat_test)^2))
+
+mses <- data.frame(degree = 1:i, training_error = training_mses, test_error = test_mses)
+
+mses
+
+```
+
+
+```{r}
+# Install and load necessary packages
+#install.packages(c("boot", "caret", "MASS"))
+library(boot)
+library(MASS)
+library(caret)
+
+# Function to calculate RMSE
+rmse <- function(actual, predicted) {
+  sqrt(mean((actual - predicted)^2))
+}
+
+# Function to calculate MAE
+mae <- function(actual, predicted) {
+  mean(abs(actual - predicted))
+}
+
+# Simulate some data (replace this with your actual data)
+set.seed(123)
+
+# Number of bootstrap samples
+n_boot <- 100
+
+# Number of folds for cross-validation
+n_folds <- 5
+
+# Perform bootstrapping for the minority class
+boot_results <- boot(df[names(df), ], function(data, indices) {
+  fit <- glm(charges ~ ., data = df[names(df), ], family = "binomial")
+  return(coef(fit))
+}, R = n_boot)
+
+# Extract coefficients from bootstrapped results
+boot_coefs <- t(boot_results$t)
+
+# Perform k-fold cross-validation
+cv_results <- train(y ~ ., data = data, method = "glm", trControl = trainControl(method = "cv", number = n_folds, classProbs = TRUE))
+
+# Extract the best model
+best_model <- cv_results$finalModel
+
+# Split the data into training and testing sets (80/20)
+train_indices <- createDataPartition(data$y, p = 0.8, list = FALSE)
+train_data <- data[train_indices, ]
+test_data <- data[-train_indices, ]
+
+# Fit the best model on the training data
+final_model <- glm(y ~ ., data = train_data, family = "binomial")
+
+# Make predictions on the test data
+predicted_probs <- predict(final_model, newdata = test_data, type = "response")
+predicted <- ifelse(predicted_probs > 0.5, 1, 0)
+
+# Calculate RMSE and MAE
+rmse_value <- rmse(test_data$y, predicted_probs)
+mae_value <- mae(test_data$y, predicted)
+
+# Print coefficients, RMSE, and MAE
+cat("Coefficients:\n")
+print(coef(final_model))
+
+cat("\nRMSE:", rmse_value, "\n")
+cat("MAE:", mae_value, "\n")
 
 ```
