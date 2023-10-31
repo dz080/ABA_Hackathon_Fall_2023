@@ -4,6 +4,7 @@ library(tidyverse)
 library(caret)
 library(lme4)
 library(forecast)
+library(htmltools)
 
 set.seed(28)
 
@@ -20,9 +21,23 @@ model_1 <- lmer(charges ~ age*bmi + region + children + female + (1 | smoker) + 
 
 
 ui <- fluidPage(
+    
+  tags$style(HTML("
+  .well {
+    background-color: #AED6F1;
+  }
+  .navbar-default .navbar-header > .navbar-brand {
+    font-size: 36px;
+    background-color: #AED6F1;
+  }
+  h1 {
+    font-size: 45px;
+  }
+")),
   
+    
     pageWithSidebar(
-      headerPanel('Get a Quote'),
+      headerPanel('Get a Quote!'),
       sidebarPanel(
     
         #age input
@@ -30,8 +45,7 @@ ui <- fluidPage(
         
       
         #gender input
-        selectInput("selectGender", label = h3("Gender"), 
-                    choices = c( "Female" = 1, "Male" = 0)),
+        selectInput("selectGender", label = h3("Gender"), choices = c("Female" = 1, "Male" = 0)),
         
         #BMI input
         numericInput("bmi", label = h3("BMI"),  value = NULL),
@@ -42,8 +56,7 @@ ui <- fluidPage(
         
         
         # Smoker
-        selectInput("selectSmoker", label = h4("Do you smoke?"), 
-                    choices = list("Yes" = 1, "No" = 0)),
+        selectInput("selectSmoker", label = h4("Do you smoke?"), choices = c("Yes" = 1, "No" = 0)),
         
         
         # Region
@@ -60,9 +73,10 @@ ui <- fluidPage(
       mainPanel(
       
         # Display the predicted value
-        textOutput("prediction")
-        
-
+        uiOutput("prediction"),
+        br(),
+        # Add an image below the output
+        img(src = "logo.jpeg", alt = "Logo", width = "80%", height = "80%")
       )
     )
 )
@@ -86,28 +100,27 @@ server <- function(input, output) {
        # Collect input values
        data <- data.frame(
         age = input$age,
-        female =input$selectGender,
+        female =as.numeric(input$selectGender),
         bmi = input$bmi,
         children = input$children,
-        smoker = input$selectSmoker,
-        region = input$selectRegion
+        smoker = as.numeric(input$selectSmoker),
+        region = as.numeric(input$selectRegion)
         # Add other input values as needed
       )
+       region_mapping <- c("NE" = 1, "NW" = 2, "SE" = 3, "SW" = 4)
        
-       data$region <- ifelse(data$region == "NE", 1, 
-                           ifelse(data$region == "NW", 2, 
-                                  ifelse(data$region == "SE", 3, 4)))
+       data$region <- region_mapping[input$selectRegion]
        
 
      # Make predictions using the pre-fitted model
       prediction <- predict(model_1, newdata = data)
-
-      # Store the predicted value for rendering
+      
+      
       output$prediction <- renderText({
-         paste("Predicted value: ", prediction)
-       })
+        HTML(paste0("<div style='font-size: 54px; font-family: Roboto, sans-serif; color: #3498db; display: flex; justify-content: center; align-items: center; height: 100px; border: 2px solid black; padding: 10px; margin-top: 30px; margin-bottom: 10px; margin-left: 10px; margin-right: 10px;'>Estimated Quote: $", round(prediction, 0), "</div>"))
+      })
+      
     })
-  
 }
 
 # Run the application 

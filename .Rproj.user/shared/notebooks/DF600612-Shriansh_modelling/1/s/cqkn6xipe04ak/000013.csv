@@ -1,4 +1,0 @@
-"0","write.csv(insurance_clean, ""/Users/composer117/Desktop/ABA_Hackathon/cleaned_df.csv"",
-          col.names = TRUE)
-"
-"2","Warning: attempt to set 'col.names' ignored"
